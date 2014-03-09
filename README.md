@@ -13,6 +13,39 @@ Import library:
     )
 ```
 
+Create a zip archive:
+
+```Go
+    contents := "/path/to/files"
+    zipPath := "/path/to/archive.zip"
+    err := zipext.Create(contents, zipPath)
+    if err != nil {
+        t.Errorf("error in Create(%s,%s): %s %s", contents, zipPath, reflect.TypeOf(err), err.Error())
+    }
+```
+
+Extract contents from zip:
+
+```Go
+    err = zipext.Extract(zipPath, extractPath)
+    if err != nil {
+        t.Errorf("error in Extract(%s,%s): %s %s", zipPath, unzipDir, reflect.TypeOf(err), err.Error())
+    }
+```
+
+Visit zip contents:
+
+```Go
+    err := zipext.Walk(path, func(f *zip.File, err error) error {
+        if err != nil {
+            return err
+        }
+        fmt.Printf("- %#v\n", f)
+        return nil
+    })
+```
+
+
 License
 -------
 

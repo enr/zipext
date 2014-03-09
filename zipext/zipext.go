@@ -110,8 +110,6 @@ func dirname(path string) string {
 }
 
 func addToZip(_path string, tw *zip.Writer, fi os.FileInfo, internalPath string) error {
-	//fmt.Printf("addToZip path %s\n", _path)
-	//fmt.Printf("addToZip internalPath %s\n", internalPath)
 	fr, err := os.Open(_path)
 	defer fr.Close()
 	if err != nil {
@@ -123,8 +121,6 @@ func addToZip(_path string, tw *zip.Writer, fi os.FileInfo, internalPath string)
 	}
 	header.Name = internalPath
 	header.UncompressedSize64 = uint64(fi.Size())
-	//header.Mode = int64( fi.Mode() )
-	//header.ModifiedTime = fi.ModTime()
 	w, err := tw.CreateHeader(header)
 	if err != nil {
 		return err
@@ -135,13 +131,6 @@ func addToZip(_path string, tw *zip.Writer, fi os.FileInfo, internalPath string)
 	}
 	return nil
 }
-
-/*
-func visitDirectory(path string, info os.FileInfo, err error) error {
-    fmt.Printf("%s %s dir=%t\n", path, info.Name(), info.IsDir())
-    return nil
-}
-*/
 
 // Preferred ReadDir to filepath.Walk because...
 // From filepath.Walk docs:
@@ -215,8 +204,6 @@ func Create(inputPath string, zipPath string) error {
 }
 
 func Add(filePath, zipPath string) error {
-	//fmt.Printf("Add %s to %s\n", filePath, zipPath)
-
 	fw, err := os.OpenFile(zipPath, os.O_RDWR|os.O_APPEND, 0660)
 	defer fw.Close()
 	if err != nil {
