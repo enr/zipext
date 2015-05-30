@@ -28,7 +28,7 @@ func TestCreateErrors(t *testing.T) {
 	for _, pair := range invalidCreateExtractArgs {
 		err := Create(pair.filesPath, pair.zipPath)
 		if err == nil {
-			t.Error("Expected error got nil for paths '%s' '%s'", pair.filesPath, pair.zipPath)
+			t.Errorf("Expected error got nil for paths '%s' '%s'", pair.filesPath, pair.zipPath)
 		}
 	}
 }
@@ -37,7 +37,7 @@ func TestExtractErrors(t *testing.T) {
 	for _, pair := range invalidCreateExtractArgs {
 		err := Extract(pair.zipPath, pair.filesPath)
 		if err == nil {
-			t.Error("Expected error got nil for paths '%s' '%s'", pair.zipPath, pair.filesPath)
+			t.Errorf("Expected error got nil for paths '%s' '%s'", pair.zipPath, pair.filesPath)
 		}
 	}
 }
@@ -58,7 +58,7 @@ func TestWalkErrors(t *testing.T) {
 			return nil
 		})
 		if err == nil {
-			t.Error("Expected error got nil for path %s", path)
+			t.Errorf("Expected error got nil for path %s", path)
 		}
 	}
 }
