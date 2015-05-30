@@ -12,7 +12,7 @@ branches:
   only:
     - master
 
-clone_folder: c:\gopath\src\github.com\enr\go-files
+clone_folder: c:\gopath\src\github.com\enr\go-zipext
 
 environment:
   GOPATH: c:\gopath
