@@ -2,6 +2,7 @@ Go zipext
 =========
 
 [![Build Status](https://travis-ci.org/enr/go-zipext.png?branch=master)](https://travis-ci.org/enr/go-zipext)
+[![Build status](https://ci.appveyor.com/api/projects/status/2nnl8sqg31b9vrvm?svg=true)](https://ci.appveyor.com/project/enr/go-zipext)
 
 Go library to manipulate zip files.
 
