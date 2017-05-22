@@ -18,7 +18,7 @@ environment:
   GOPATH: c:\gopath
   matrix:
   - GOARCH: amd64
-    GOVERSION: 1.4
+    GOVERSION: 1.8
 
 install:
   # - echo %PATH%
