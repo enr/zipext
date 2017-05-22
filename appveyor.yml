@@ -28,7 +28,6 @@ install:
   - go env
   - go get -v -t ./...
   - go get -u golang.org/x/tools/cmd/cover
-  - go get -u golang.org/x/tools/cmd/vet
 
 build_script:
   - go vet ./...
