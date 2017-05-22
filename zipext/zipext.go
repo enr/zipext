@@ -135,7 +135,7 @@ func addToZip(_path string, tw *zip.Writer, fi os.FileInfo, internalPath string)
 // Preferred ReadDir to filepath.Walk because...
 // From filepath.Walk docs:
 // for very large directories Walk can be inefficient. Walk does not follow symbolic links.
-func walkDirectory(startPath string, tw *zip.Writer, basePath string) error {
+func walkDirectory(startPath string, tw *zip.Writer, basePath string, flat bool) error {
 	dirPath := filepath.ToSlash(startPath)
 	dir, err := os.Open(dirPath)
 	defer dir.Close()
@@ -149,12 +149,15 @@ func walkDirectory(startPath string, tw *zip.Writer, basePath string) error {
 	for _, fi := range fis {
 		curPath := dirPath + "/" + fi.Name()
 		if fi.IsDir() {
-			err = walkDirectory(curPath, tw, basePath)
+			err = walkDirectory(curPath, tw, basePath, flat)
 			if err != nil {
 				return err
 			}
 		} else {
 			baseName := filepath.Base(basePath)
+			if flat {
+				baseName = ""
+			}
 			internalPath := strings.Replace(curPath, basePath, baseName, 1)
 			internalPath = strings.TrimLeft(internalPath, "/")
 			err = addToZip(curPath, tw, fi, internalPath)
@@ -166,7 +169,16 @@ func walkDirectory(startPath string, tw *zip.Writer, basePath string) error {
 	return nil
 }
 
+func CreateFlat(inputPath string, zipPath string) error {
+	return createZip(inputPath, zipPath, true)
+}
+
+// if inputPath is a directory the zip will contain the directory
 func Create(inputPath string, zipPath string) error {
+	return createZip(inputPath, zipPath, false)
+}
+
+func createZip(inputPath string, zipPath string, flat bool) error {
 	inPath := strings.TrimSpace(inputPath)
 	outFilePath := strings.TrimSpace(zipPath)
 	if inPath == "" || outFilePath == "" {
@@ -186,7 +198,7 @@ func Create(inputPath string, zipPath string) error {
 	zw := zip.NewWriter(fw)
 	defer zw.Close()
 	if files.IsDir(inPath) {
-		err = walkDirectory(inPath, zw, inPath)
+		err = walkDirectory(inPath, zw, inPath, flat)
 		if err != nil {
 			return err
 		}
@@ -199,26 +211,6 @@ func Create(inputPath string, zipPath string) error {
 		if err != nil {
 			return err
 		}
-	}
-	return nil
-}
-
-func Add(filePath, zipPath string) error {
-	fw, err := os.OpenFile(zipPath, os.O_RDWR|os.O_APPEND, 0660)
-	defer fw.Close()
-	if err != nil {
-		return err
-	}
-	zw := zip.NewWriter(fw)
-	defer zw.Close()
-
-	fi, err := os.Stat(filePath)
-	if err != nil {
-		return err
-	}
-	err = addToZip(filePath, zw, fi, filePath)
-	if err != nil {
-		return err
 	}
 	return nil
 }

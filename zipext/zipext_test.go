@@ -143,6 +143,52 @@ func TestCreateWalkExtract(t *testing.T) {
 	}
 }
 
+func TestCreateFlat(t *testing.T) {
+	testdataDir := "testdata"
+	contents := fmt.Sprintf("%s/files", testdataDir)
+	outputDir := "output"
+	zipPath := fmt.Sprintf("%s/TestCreate_01.zip", outputDir)
+
+	// clean paths
+	deleteFile(zipPath, t)
+	createDir(outputDir, t)
+
+	// check which/how many files will be putted in the zip
+	testfiles := make([]string, 1)
+	filepath.Walk(contents, func(path string, info os.FileInfo, err error) error {
+		if info.Mode().IsRegular() {
+			c := strings.TrimLeft(strings.Replace(filepath.ToSlash(path), contents, "", 1), "/")
+			testfiles = append(testfiles, c)
+		}
+		return nil
+	})
+
+	// create the zip
+	err := CreateFlat(contents, zipPath)
+	if err != nil {
+		t.Errorf("error in Create(%s,%s): %s %s", contents, zipPath, reflect.TypeOf(err), err.Error())
+	}
+
+	// walk the created zip file and register contents
+	zipfiles := make([]string, 1)
+	Walk(zipPath, func(f *zip.File, err error) error {
+		zipfiles = append(zipfiles, f.Name)
+		return nil
+	})
+
+	// verify that zip contents are the expected files
+	testfilesNum := len(testfiles)
+	zipfilesNum := len(zipfiles)
+	if testfilesNum != zipfilesNum {
+		t.Errorf("expected len zipfiles %d but found %d", testfilesNum, zipfilesNum)
+	}
+	for _, tf := range testfiles {
+		if !lang.SliceContainsString(zipfiles, tf) {
+			t.Errorf(`expected "%s" not found in zip`, tf)
+		}
+	}
+}
+
 func deleteFile(path string, t *testing.T) {
 	if files.Exists(path) {
 		err := os.Remove(path)
