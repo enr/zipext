@@ -135,7 +135,7 @@ func addToZip(_path string, tw *zip.Writer, fi os.FileInfo, internalPath string)
 // Preferred ReadDir to filepath.Walk because...
 // From filepath.Walk docs:
 // for very large directories Walk can be inefficient. Walk does not follow symbolic links.
-func walkDirectory(startPath string, tw *zip.Writer, basePath string, flat bool) error {
+func walkDirectory(startPath string, tw *zip.Writer, basePath string, ctx context) error {
 	dirPath := filepath.ToSlash(startPath)
 	dir, err := os.Open(dirPath)
 	defer dir.Close()
@@ -148,15 +148,18 @@ func walkDirectory(startPath string, tw *zip.Writer, basePath string, flat bool)
 	}
 	for _, fi := range fis {
 		curPath := dirPath + "/" + fi.Name()
+		if files.IsSamePath(curPath, ctx.zipPath) {
+			continue
+		}
 		if fi.IsDir() {
-			err = walkDirectory(curPath, tw, basePath, flat)
+			err = walkDirectory(curPath, tw, basePath, ctx)
 			if err != nil {
 				return err
 			}
 		} else {
-			baseName := filepath.Base(basePath)
-			if flat {
-				baseName = ""
+			baseName := ""
+			if ctx.createBaseDir {
+				baseName = filepath.Base(basePath)
 			}
 			internalPath := strings.Replace(curPath, basePath, baseName, 1)
 			internalPath = strings.TrimLeft(internalPath, "/")
@@ -169,16 +172,29 @@ func walkDirectory(startPath string, tw *zip.Writer, basePath string, flat bool)
 	return nil
 }
 
+type context struct {
+	createBaseDir bool
+	zipPath   string
+}
+
 func CreateFlat(inputPath string, zipPath string) error {
-	return createZip(inputPath, zipPath, true)
+	ctx := context {
+		createBaseDir: false,
+		zipPath: zipPath,
+	}
+	return createZip(inputPath, zipPath, ctx)
 }
 
 // if inputPath is a directory the zip will contain the directory
 func Create(inputPath string, zipPath string) error {
-	return createZip(inputPath, zipPath, false)
+	ctx := context {
+		createBaseDir: true,
+		zipPath: zipPath,
+	}
+	return createZip(inputPath, zipPath, ctx)
 }
 
-func createZip(inputPath string, zipPath string, flat bool) error {
+func createZip(inputPath string, zipPath string, ctx context) error {
 	inPath := strings.TrimSpace(inputPath)
 	outFilePath := strings.TrimSpace(zipPath)
 	if inPath == "" || outFilePath == "" {
@@ -198,7 +214,7 @@ func createZip(inputPath string, zipPath string, flat bool) error {
 	zw := zip.NewWriter(fw)
 	defer zw.Close()
 	if files.IsDir(inPath) {
-		err = walkDirectory(inPath, zw, inPath, flat)
+		err = walkDirectory(inPath, zw, inPath, ctx)
 		if err != nil {
 			return err
 		}
