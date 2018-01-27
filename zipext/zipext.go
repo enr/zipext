@@ -3,11 +3,12 @@ package zipext
 import (
 	"archive/zip"
 	"fmt"
-	"github.com/enr/go-files/files"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/enr/go-files/files"
 )
 
 // WalkFunc is the type of the function called for each file or directory
@@ -49,6 +50,7 @@ func Walk(path string, walkFn WalkFunc) error {
 	return walk(root, walkFn)
 }
 
+// Extract contents of archivePath into the extractPath
 func Extract(archivePath string, extractPath string) error {
 	zipPath := strings.TrimSpace(archivePath)
 	destinationPath := strings.TrimSpace(extractPath)
@@ -72,7 +74,7 @@ func Extract(archivePath string, extractPath string) error {
 		return err
 	}
 	if files.Exists(destinationPath) && !fi.IsDir() {
-		return fmt.Errorf("%s exists but it is NOT a directory!", destinationPath)
+		return fmt.Errorf("%s exists but it is NOT a directory", destinationPath)
 	}
 	for _, f := range r.File {
 		destination := fmt.Sprintf("%s/%s", destinationBaseDir, f.Name)
@@ -110,9 +112,13 @@ func dirname(path string) string {
 }
 
 func addToZip(_path string, tw *zip.Writer, fi os.FileInfo, internalPath string) error {
+	ignoreBrokenSimlink := true
 	fr, err := os.Open(_path)
 	defer fr.Close()
 	if err != nil {
+		if files.IsSymlink(_path) && ignoreBrokenSimlink {
+			return nil
+		}
 		return err
 	}
 	header, err := zip.FileInfoHeader(fi)
@@ -174,22 +180,25 @@ func walkDirectory(startPath string, tw *zip.Writer, basePath string, ctx contex
 
 type context struct {
 	createBaseDir bool
-	zipPath   string
+	zipPath       string
 }
 
+// CreateFlat build a zip containing inputPath.
+// If inputPath is a directory the zip will contain the directory contents
 func CreateFlat(inputPath string, zipPath string) error {
-	ctx := context {
+	ctx := context{
 		createBaseDir: false,
-		zipPath: zipPath,
+		zipPath:       zipPath,
 	}
 	return createZip(inputPath, zipPath, ctx)
 }
 
-// if inputPath is a directory the zip will contain the directory
+// Create build a zip containing inputPath.
+// If inputPath is a directory the zip will contain the directory
 func Create(inputPath string, zipPath string) error {
-	ctx := context {
+	ctx := context{
 		createBaseDir: true,
-		zipPath: zipPath,
+		zipPath:       zipPath,
 	}
 	return createZip(inputPath, zipPath, ctx)
 }

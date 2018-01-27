@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+
+set -e
+
+TOOL_SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$TOOL_SOURCE" ] ; do TOOL_SOURCE="$(readlink "$TOOL_SOURCE")"; done
+HACK_DIR="$( cd -P "$( dirname "$TOOL_SOURCE" )" && pwd )"
+PRJ_HOME="$( cd -P "$( dirname "$HACK_DIR" )" && pwd )"
+
+source "${HACK_DIR}/config"
+
+hash golint 2>/dev/null || {
+  go get -u github.com/golang/lint/golint
+}
+
+hash goimports 2>/dev/null || {
+  go get golang.org/x/tools/cmd/goimports
+}
+
+cd "${PRJ_HOME}/zipext"
+
+
+  echo "----- golint"
+  golint
+  echo "----- go fmt"
+  go fmt ./...
+  echo "----- go vet"
+  go vet ./...
+  echo "----- goimports"
+  goimports -w .
+  diff <(goimports -d .) <(printf "")
+  diff <(golint ./...) <(printf "")
+  # cd "$PRJ_HOME"
+  # echo "----- go build"
+  # # we need binaries for some e2e test
+  # go build -o "${BIN_DIR}/${app_name}" "github.com/${GH_OWNER}/${GH_REPO}/cmd/${app_name}"
+  # cd "$dir"
+  echo "----- go test -cover ./..."
+  go test -cover ./...

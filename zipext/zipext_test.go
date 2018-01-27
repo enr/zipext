@@ -3,14 +3,15 @@ package zipext
 import (
 	"archive/zip"
 	"fmt"
-	"github.com/enr/go-commons/lang"
-	"github.com/enr/go-files/files"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/enr/go-commons/lang"
+	"github.com/enr/go-files/files"
 )
 
 type testpair struct {
