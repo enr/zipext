@@ -54,6 +54,8 @@ func TestCreateFlatWin(t *testing.T) {
 	testfilesNum := len(testfiles)
 	zipfilesNum := len(zipfiles)
 	if testfilesNum != zipfilesNum {
+		fmt.Printf("zipfiles %q \n", zipfiles)
+		fmt.Printf("testfiles %q \n", testfiles)
 		t.Errorf("expected len zipfiles %d but found %d", testfilesNum, zipfilesNum)
 	}
 	for _, tf := range testfiles {
