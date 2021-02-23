@@ -127,7 +127,7 @@ func addToZip(fp string, tw *zip.Writer, fi os.FileInfo, internalPath string) er
 	fr, err := os.Open(fp)
 	defer fr.Close()
 	if err != nil {
-		if files.IsSymlink(fp) && ignoreBrokenSimlink {
+		if isSymlink(fp) && ignoreBrokenSimlink {
 			return nil
 		}
 		return err
