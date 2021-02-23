@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+
+set -e
+
+tool_source="${BASH_SOURCE[0]}"
+while [ -h "$tool_source" ] ; do tool_source="$(readlink "$tool_source")"; done
+sdlc_dir="$( cd -P "$( dirname "$tool_source" )" && pwd )"
+prj_home="$( cd -P "$( dirname "$sdlc_dir" )" && pwd )"
+
+source "${sdlc_dir}/config"
+
+echo "Project home ${prj_home}"
+
+git rev-parse --abbrev-ref --symbolic-full-name '@{u}' > /dev/null || {
+  echo 'No upstream set for current branch: aborting release'
+  exit 1
+}
+
+upstream='@{u}'
+local_branch=$(git rev-parse @)
+remote_branch=$(git rev-parse "$upstream")
+BASE=$(git merge-base @ "$upstream")
+
+[[ "$local_branch" = "$remote_branch" ]] || {
+  echo "Local branch ${local_branch} and remote ${remote_branch} are not aligned: aborting release"
+  exit 1
+}
+
+[[ -n "$1" ]] || {
+  echo 'Missing release version: aborting release'
+  exit 1
+}
+release_version="${1}"
+echo "Release version ${release_version}"
+
+[[ -n "$2" ]] || {
+  echo 'Missing snapshot version: aborting release'
+  exit 1
+}
+snapshot_version="${2}-dev"
+echo "Snapshot version ${snapshot_version}"
+
+tag_name="v${release_version}"
+tag_exists=$(git tag -l "${tag_name}")
+[[ -n "$tag_exists" ]] && {
+  echo "Tag ${tag_name} exists: aborting release"
+  exit 1
+}
+
+echo "Release ${release_version} (tag ${tag_name}) and back to ${snapshot_version}"
+
+git_dirty=$(git status --porcelain)
+[[ -n "$git_dirty" ]] && {
+  echo 'Uncommitted changes detected: aborting release'
+  exit 1
+}
+
+tmp_config=$(mktemp)
+echo "Bump version to ${release_version} - ${tmp_config}"
+APP_VERSION_LINE_IDENTIFIER='APP_VERSION_AUTOLINE'
+cat .sdlc/config | grep -v -e '^$' | grep -v "$APP_VERSION_LINE_IDENTIFIER" > "$tmp_config"
+echo "" >> "$tmp_config"
+echo "APP_VERSION='${release_version}' # ${APP_VERSION_LINE_IDENTIFIER} this line is automatically managed" >> "$tmp_config"
+echo "" >> "$tmp_config"
+cp "$tmp_config" "${sdlc_dir}/config"
+git commit -a -m "release ${release_version}"
+git tag "${tag_name}"
+
+echo "Back to snapshot ${snapshot_version}"
+cat .sdlc/config | grep -v -e '^$' | grep -v "$APP_VERSION_LINE_IDENTIFIER" > "$tmp_config"
+echo "" >> "$tmp_config"
+echo "APP_VERSION='${snapshot_version}' # ${APP_VERSION_LINE_IDENTIFIER} this line is automatically managed" >> "$tmp_config"
+echo "" >> "$tmp_config"
+cp "$tmp_config" "${sdlc_dir}/config"
+
+git commit -a -m '[skip ci] back to snapshot'
+git push
+git push --tags

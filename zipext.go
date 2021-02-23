@@ -87,11 +87,10 @@ func Extract(archivePath string, extractPath string) error {
 		if err != nil {
 			return err
 		}
-		dst := fmt.Sprintf("%s/%s", destinationBaseDir, f.Name)
-		if files.Exists(dst) {
+		if files.Exists(destination) {
 			continue
 		}
-		d, err := os.Create(dst)
+		d, err := os.Create(destination)
 		defer d.Close()
 		if err != nil {
 			return err
@@ -111,12 +110,12 @@ func dirname(path string) string {
 	return "."
 }
 
-func addToZip(_path string, tw *zip.Writer, fi os.FileInfo, internalPath string) error {
+func addToZip(fp string, tw *zip.Writer, fi os.FileInfo, internalPath string) error {
 	ignoreBrokenSimlink := true
-	fr, err := os.Open(_path)
+	fr, err := os.Open(fp)
 	defer fr.Close()
 	if err != nil {
-		if files.IsSymlink(_path) && ignoreBrokenSimlink {
+		if files.IsSymlink(fp) && ignoreBrokenSimlink {
 			return nil
 		}
 		return err
@@ -141,8 +140,16 @@ func addToZip(_path string, tw *zip.Writer, fi os.FileInfo, internalPath string)
 // Preferred ReadDir to filepath.Walk because...
 // From filepath.Walk docs:
 // for very large directories Walk can be inefficient. Walk does not follow symbolic links.
-func walkDirectory(startPath string, tw *zip.Writer, basePath string, ctx context) error {
-	dirPath := filepath.ToSlash(startPath)
+func walkDirectory(startPath string, tw *zip.Writer, basePath2 string, ctx context) error {
+	basePath, err := filepath.Abs(basePath2)
+	if err != nil {
+		return err
+	}
+	basePath = filepath.ToSlash(basePath)
+	dirPath, err := filepath.Abs(startPath)
+	if err != nil {
+		return err
+	}
 	dir, err := os.Open(dirPath)
 	defer dir.Close()
 	if err != nil {
@@ -153,7 +160,7 @@ func walkDirectory(startPath string, tw *zip.Writer, basePath string, ctx contex
 		return err
 	}
 	for _, fi := range fis {
-		curPath := dirPath + "/" + fi.Name()
+		curPath := filepath.ToSlash(filepath.Join(dirPath, fi.Name()))
 		if files.IsSamePath(curPath, ctx.zipPath) {
 			continue
 		}

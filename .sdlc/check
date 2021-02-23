@@ -4,36 +4,73 @@ set -e
 
 TOOL_SOURCE="${BASH_SOURCE[0]}"
 while [ -h "$TOOL_SOURCE" ] ; do TOOL_SOURCE="$(readlink "$TOOL_SOURCE")"; done
-HACK_DIR="$( cd -P "$( dirname "$TOOL_SOURCE" )" && pwd )"
-PRJ_HOME="$( cd -P "$( dirname "$HACK_DIR" )" && pwd )"
+SDLC_DIR="$( cd -P "$( dirname "$TOOL_SOURCE" )" && pwd )"
+PRJ_HOME="$( cd -P "$( dirname "$SDLC_DIR" )" && pwd )"
 
-source "${HACK_DIR}/config"
+git_hash="$(git rev-parse HEAD)"
+git_message=$(git log --format=%B -n 1 "${git_hash}")
+# echo "git message ${git_message}"
+# [[ "$git_message" == '[skip ci]'* ]] && {
+#   echo "skip ci"
+#   exit 0
+# }
+
+source "${SDLC_DIR}/config"
+
+# lib_dir="${PRJ_HOME}/${SDLC_GO_BASE}"
+# [[ -d "$lib_dir" ]] || {
+#   echo "Lib dir SDLC_GO_BASE not found: ${SDLC_GO_BASE}"
+#   exit 1
+# }
+# cd "$lib_dir"
+
+# Ensure GOPATH is on PATH. (Needed from Go tools).
+# If GOPATH is defined assume it is on $PATH
+echo "Environment GOPATH='${GOPATH}'"
+[[ -z "$GOPATH" ]] && {
+  # GOPATH undefined
+  default_gopath=$(go env GOPATH)
+  echo "No GOPATH from environment, using 'go env' ${default_gopath}"
+  mkdir -p "${default_gopath}"
+  # go env -w GOPATH="${gopath_dir}"
+  export GOPATH="${default_gopath}"
+}
+echo "Environment PATH=${PATH}"
+[[ "$PATH" =~ (^|:)"${GOPATH}/bin"(|/)(:|$) ]] || {
+  echo "Adding ${GOPATH}/bin to PATH"
+  export PATH="${GOPATH}/bin:${PATH}"
+}
 
 hash golint 2>/dev/null || {
-  go get -u github.com/golang/lint/golint
+  go get -u golang.org/x/lint/golint
 }
 
 hash goimports 2>/dev/null || {
-  go get golang.org/x/tools/cmd/goimports
+  go get -u golang.org/x/tools/cmd/goimports
 }
 
-cd "${PRJ_HOME}/zipext"
+hash gocyclo 2>/dev/null || {
+  go get -u github.com/fzipp/gocyclo
+}
 
+[[ -n "$SDLC_GO_VENDOR" ]] && {
+  echo 'Detected Go vendor mode: set GOPROXY=off'
+  export GOPROXY='off'
+}
 
-  echo "----- golint"
-  golint
-  echo "----- go fmt"
-  go fmt ./...
-  echo "----- go vet"
-  go vet ./...
-  echo "----- goimports"
-  goimports -w .
-  diff <(goimports -d .) <(printf "")
-  diff <(golint ./...) <(printf "")
-  # cd "$PRJ_HOME"
-  # echo "----- go build"
-  # # we need binaries for some e2e test
-  # go build -o "${BIN_DIR}/${app_name}" "github.com/${GH_OWNER}/${GH_REPO}/cmd/${app_name}"
-  # cd "$dir"
-  echo "----- go test -cover ./..."
-  go test -cover ./...
+cd "${PRJ_HOME}"
+
+echo "--- golint"
+diff <(golint ./...) <(printf "")
+echo "--- go fmt"
+go fmt ./...
+echo "--- go vet"
+go vet ./...
+echo "--- goimports"
+goimports -w .
+diff <(goimports -d .) <(printf "")
+echo "--- gocyclo"
+diff <(gocyclo -over 15 *.go) <(printf "")
+echo "--- go test"
+go test -cover ./...
+

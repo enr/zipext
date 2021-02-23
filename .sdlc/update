@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+set -e
+
+TOOL_SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$TOOL_SOURCE" ] ; do TOOL_SOURCE="$(readlink "$TOOL_SOURCE")"; done
+SDLC_DIR="$( cd -P "$( dirname "$TOOL_SOURCE" )" && pwd )"
+PRJ_HOME="$( cd -P "$( dirname "$SDLC_DIR" )" && pwd )"
+
+cd "$PRJ_HOME"
+
+go mod tidy
+
+[[ -n "$SDLC_GO_VENDOR" ]] && {
+  echo 'Detected Go vendor mode'
+  go mod vendor
+}

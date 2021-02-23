@@ -190,6 +190,38 @@ func TestCreateFlat(t *testing.T) {
 	}
 }
 
+func TestCreateSingleFile(t *testing.T) {
+	contents := "testdata/files/01.txt"
+	outputDir := "output"
+	zipPath := fmt.Sprintf("%s/TestCreate_02.zip", outputDir)
+
+	// clean paths
+	deleteFile(zipPath, t)
+	createDir(outputDir, t)
+
+	// create the zip
+	err := CreateFlat(contents, zipPath)
+	if err != nil {
+		t.Errorf("error in Create(%s,%s): %s %s", contents, zipPath, reflect.TypeOf(err), err.Error())
+	}
+
+	// walk the created zip file and register contents
+	zipfiles := []string{}
+	Walk(zipPath, func(f *zip.File, err error) error {
+		zipfiles = append(zipfiles, f.Name)
+		return nil
+	})
+	// verify that zip contents are the expected file
+	zipfilesNum := len(zipfiles)
+	if 1 != zipfilesNum {
+		t.Errorf("expected len zipfiles 1 but found %d", zipfilesNum)
+	}
+	zf := zipfiles[0]
+	if zf != "01.txt" {
+		t.Errorf(`expected zip containing "01.txt" but found "%s"`, zf)
+	}
+}
+
 func deleteFile(path string, t *testing.T) {
 	if files.Exists(path) {
 		err := os.Remove(path)
