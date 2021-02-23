@@ -72,5 +72,5 @@ diff <(goimports -d .) <(printf "")
 echo "--- gocyclo"
 diff <(gocyclo -over 15 *.go) <(printf "")
 echo "--- go test"
-go test -cover ./...
+go test -v -cover ./...
 

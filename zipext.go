@@ -110,24 +110,14 @@ func dirname(path string) string {
 	return "."
 }
 
-func isSymlink(p string) bool {
-	candidate := strings.TrimSpace(p)
-	if candidate == "" {
-		return false
-	}
-	fi, err := os.Lstat(p)
-	if err != nil {
-		return false
-	}
-	return (fi.Mode()&os.ModeSymlink == 0)
-}
-
 func addToZip(fp string, tw *zip.Writer, fi os.FileInfo, internalPath string) error {
 	ignoreBrokenSimlink := true
 	fr, err := os.Open(fp)
 	defer fr.Close()
 	if err != nil {
-		if isSymlink(fp) && ignoreBrokenSimlink {
+		s := files.IsSymlink(fp)
+		fmt.Printf("symlink %s %t \n", fp, s)
+		if s && ignoreBrokenSimlink {
 			return nil
 		}
 		return err
