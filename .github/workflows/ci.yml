@@ -6,6 +6,10 @@ on:
       - main
     tags-ignore:
       - '*'
+    paths-ignore: 
+      - README.md
+      - LICENSE
+      - docs/*
 
 jobs:
   build:
