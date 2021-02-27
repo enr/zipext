@@ -70,7 +70,7 @@ echo "--- goimports"
 goimports -w .
 diff <(goimports -d .) <(printf "")
 echo "--- gocyclo"
-diff <(gocyclo -over 15 *.go) <(printf "")
+diff <(gocyclo -over 18 *.go) <(printf "")
 echo "--- go test"
 go test -v -cover ./...
 

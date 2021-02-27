@@ -29,7 +29,7 @@ func TestCreateErrors(t *testing.T) {
 	for _, pair := range invalidCreateExtractArgs {
 		err := Create(pair.filesPath, pair.zipPath)
 		if err == nil {
-			t.Errorf("Expected error got nil for paths '%s' '%s'", pair.filesPath, pair.zipPath)
+			t.Errorf("Expected error but got nil for paths '%s' '%s'", pair.filesPath, pair.zipPath)
 		}
 	}
 }
@@ -38,8 +38,28 @@ func TestExtractErrors(t *testing.T) {
 	for _, pair := range invalidCreateExtractArgs {
 		err := Extract(pair.zipPath, pair.filesPath)
 		if err == nil {
-			t.Errorf("Expected error got nil for paths '%s' '%s'", pair.zipPath, pair.filesPath)
+			t.Errorf("Expected error but got nil for paths '%s' '%s'", pair.zipPath, pair.filesPath)
 		}
+	}
+}
+
+func TestExtractInvalidZip(t *testing.T) {
+	p := `testdata/not-a-zip.zip`
+	o := `output/unzip`
+	err := Extract(p, o)
+	if err == nil {
+		t.Errorf("Expected error but got nil for paths '%s' '%s'", p, o)
+	}
+}
+
+func TestIsValidZip(t *testing.T) {
+	p := `testdata/not-a-zip.zip`
+	valid, err := IsValidZip(p)
+	if err != nil {
+		t.Errorf("got error checking for invalid zip '%s'", p)
+	}
+	if valid {
+		t.Errorf("invalid zip '%s' considered valid", p)
 	}
 }
 
@@ -168,6 +188,14 @@ func TestCreateFlat(t *testing.T) {
 	err := CreateFlat(contents, zipPath)
 	if err != nil {
 		t.Errorf("error in Create(%s,%s): %s %s", contents, zipPath, reflect.TypeOf(err), err.Error())
+	}
+
+	valid, err := IsValidZip(zipPath)
+	if err != nil {
+		t.Errorf("error checking for validity: %s: %v", zipPath, err)
+	}
+	if !valid {
+		t.Errorf("created invalid zip: %s", zipPath)
 	}
 
 	// walk the created zip file and register contents

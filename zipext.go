@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -50,6 +51,32 @@ func Walk(path string, walkFn WalkFunc) error {
 	return walk(root, walkFn)
 }
 
+// IsValidZip checks if the file is detected as zip:
+// Java jar, war and ear files are zip
+func IsValidZip(maybeZip string) (bool, error) {
+	file, err := os.Open(maybeZip)
+	if err != nil {
+		return false, err
+	}
+	defer file.Close()
+
+	// Only the first 512 bytes are used to sniff the content type.
+	buffer := make([]byte, 512)
+	n, err := file.Read(buffer)
+	if err != nil && err != io.EOF {
+		return false, err
+	}
+
+	// Reset the read pointer if necessary.
+	file.Seek(0, 0)
+
+	// Always returns a valid content-type and "application/octet-stream" if no others seemed to match.
+	contentType := http.DetectContentType(buffer[:n])
+	fmt.Printf("content type %s \n", contentType)
+	v := contentType == `application/zip`
+	return v, nil
+}
+
 // Extract contents of archivePath into the extractPath
 func Extract(archivePath string, extractPath string) error {
 	zipPath := strings.TrimSpace(archivePath)
@@ -64,10 +91,10 @@ func Extract(archivePath string, extractPath string) error {
 		return fmt.Errorf("%s invalid path", destinationPath)
 	}
 	r, err := zip.OpenReader(zipPath)
-	defer r.Close()
 	if err != nil {
 		return err
 	}
+	defer r.Close()
 	destinationBaseDir := filepath.ToSlash(destinationPath)
 	fi, err := os.Stat(destinationBaseDir)
 	if err != nil {
