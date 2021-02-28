@@ -48,6 +48,15 @@ Visit zip contents:
     })
 ```
 
+Check if file is valid zip:
+
+```Go
+    p := "/path/to/archive.zip"
+    valid, err := zipext.IsValidZip(p)
+    if err != nil {
+        t.Errorf("got error checking for valid zip '%s'", p)
+    }
+```
 
 ## License
 
