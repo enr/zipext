@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/enr/go-files/files"
@@ -72,7 +73,6 @@ func IsValidZip(maybeZip string) (bool, error) {
 
 	// Always returns a valid content-type and "application/octet-stream" if no others seemed to match.
 	contentType := http.DetectContentType(buffer[:n])
-	fmt.Printf("content type %s \n", contentType)
 	v := contentType == `application/zip`
 	return v, nil
 }
@@ -143,7 +143,6 @@ func addToZip(fp string, tw *zip.Writer, fi os.FileInfo, internalPath string) er
 	defer fr.Close()
 	if err != nil {
 		s := files.IsSymlink(fp)
-		fmt.Printf("symlink %s %t \n", fp, s)
 		if s && ignoreBrokenSimlink {
 			return nil
 		}
@@ -205,6 +204,9 @@ func walkDirectory(startPath string, tw *zip.Writer, basePath2 string, ctx conte
 			}
 			internalPath := strings.Replace(curPath, basePath, baseName, 1)
 			internalPath = strings.TrimLeft(internalPath, "/")
+			if isExcluded(internalPath, ctx.exclusions) {
+				continue
+			}
 			err = addToZip(curPath, tw, fi, internalPath)
 			if err != nil {
 				return err
@@ -217,6 +219,7 @@ func walkDirectory(startPath string, tw *zip.Writer, basePath2 string, ctx conte
 type context struct {
 	createBaseDir bool
 	zipPath       string
+	exclusions    []string
 }
 
 // CreateFlat build a zip containing inputPath.
@@ -225,6 +228,7 @@ func CreateFlat(inputPath string, zipPath string) error {
 	ctx := context{
 		createBaseDir: false,
 		zipPath:       zipPath,
+		exclusions:    []string{},
 	}
 	return createZip(inputPath, zipPath, ctx)
 }
@@ -235,8 +239,38 @@ func Create(inputPath string, zipPath string) error {
 	ctx := context{
 		createBaseDir: true,
 		zipPath:       zipPath,
+		exclusions:    []string{},
 	}
 	return createZip(inputPath, zipPath, ctx)
+}
+
+// Create build a zip containing inputPath but excluding files matching `exclusions` regex.
+// If inputPath is a directory the zip will contain the directory
+func CreateExcluding(inputPath string, zipPath string, exclusions []string) error {
+	ctx := context{
+		createBaseDir: true,
+		zipPath:       zipPath,
+		exclusions:    exclusions,
+	}
+	return createZip(inputPath, zipPath, ctx)
+}
+
+func isExcluded(inputPath string, exclusions []string) bool {
+	if inputPath == "" {
+		return false
+	}
+	var matched bool
+	for _, ex := range exclusions {
+		if ex == "" {
+			continue
+		}
+		r, _ := regexp.CompilePOSIX(ex)
+		matched = r.MatchString(inputPath)
+		if matched {
+			return true
+		}
+	}
+	return false
 }
 
 func createZip(inputPath string, zipPath string, ctx context) error {

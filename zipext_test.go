@@ -84,6 +84,46 @@ func TestWalkErrors(t *testing.T) {
 	}
 }
 
+type testex struct {
+	input      string
+	exclusions []string
+	expected   bool
+}
+
+var exclusionsTests = []testex{
+	{"", []string{""}, false},
+	// prefix
+	{"target/test/foo", []string{"target/*"}, true},
+	{"target/test/foo", []string{"^target"}, true},
+	{"target/test/foo", []string{"/target/*"}, false},
+	{"target/test/foo", []string{"/target/"}, false},
+	{"targettest/foo.java", []string{"target*"}, true},
+	{"targettest/foo.java", []string{"target"}, true},
+	{"targettest/foo.java", []string{`target/`}, false},
+	// extensions
+	{"target/test/foo.java", []string{".java$"}, true},
+	{"target/test/foo.java", []string{"\\.java$"}, true},
+	{"target/test/foo.java", []string{`java$`}, true},
+	{"target/test/foo.javaz", []string{`java$`}, false},
+	{"target/test/foojavabla", []string{`.*(java)`}, true},
+	{"target/test/foojava", []string{`.*\.(java)$`}, false},
+	{"target/test/foo.java", []string{`.*\.(java)$`}, true},
+	// middle
+	{"targettest/foo.java", []string{`foo\.`}, true},
+	{"targettest/foojava", []string{`foo\.`}, false},
+	{"target/test/foojava", []string{`/test/`}, true},
+}
+
+func TestIsExcluded(t *testing.T) {
+	var actual bool
+	for _, ex := range exclusionsTests {
+		actual = isExcluded(ex.input, ex.exclusions)
+		if actual != ex.expected {
+			t.Errorf("Expected %v but got %v for isExcluded '%s' %v", ex.expected, actual, ex.input, ex.exclusions)
+		}
+	}
+}
+
 // Test for Create, Walk and Extract functions.
 func TestCreateWalkExtract(t *testing.T) {
 	testdataDir := "testdata"

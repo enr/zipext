@@ -9,20 +9,8 @@ PRJ_HOME="$( cd -P "$( dirname "$SDLC_DIR" )" && pwd )"
 
 git_hash="$(git rev-parse HEAD)"
 git_message=$(git log --format=%B -n 1 "${git_hash}")
-# echo "git message ${git_message}"
-# [[ "$git_message" == '[skip ci]'* ]] && {
-#   echo "skip ci"
-#   exit 0
-# }
 
 source "${SDLC_DIR}/config"
-
-# lib_dir="${PRJ_HOME}/${SDLC_GO_BASE}"
-# [[ -d "$lib_dir" ]] || {
-#   echo "Lib dir SDLC_GO_BASE not found: ${SDLC_GO_BASE}"
-#   exit 1
-# }
-# cd "$lib_dir"
 
 # Ensure GOPATH is on PATH. (Needed from Go tools).
 # If GOPATH is defined assume it is on $PATH
@@ -41,16 +29,12 @@ echo "Environment PATH=${PATH}"
   export PATH="${GOPATH}/bin:${PATH}"
 }
 
-hash golint 2>/dev/null || {
-  go get -u golang.org/x/lint/golint
-}
-
 hash goimports 2>/dev/null || {
-  go get -u golang.org/x/tools/cmd/goimports
+  go install golang.org/x/tools/cmd/goimports@latest
 }
 
 hash gocyclo 2>/dev/null || {
-  go get -u github.com/fzipp/gocyclo
+  go install github.com/fzipp/gocyclo/cmd/gocyclo@latest
 }
 
 [[ -n "$SDLC_GO_VENDOR" ]] && {
@@ -60,8 +44,6 @@ hash gocyclo 2>/dev/null || {
 
 cd "${PRJ_HOME}"
 
-echo "--- golint"
-diff <(golint ./...) <(printf "")
 echo "--- go fmt"
 go fmt ./...
 echo "--- go vet"
@@ -73,4 +55,3 @@ echo "--- gocyclo"
 diff <(gocyclo -over 18 *.go) <(printf "")
 echo "--- go test"
 go test -v -cover ./...
-
