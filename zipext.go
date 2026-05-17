@@ -153,6 +153,7 @@ func addToZip(fp string, tw *zip.Writer, fi os.FileInfo, internalPath string) er
 		return err
 	}
 	header.Name = internalPath
+	header.Method = zip.Deflate
 	header.UncompressedSize64 = uint64(fi.Size())
 	w, err := tw.CreateHeader(header)
 	if err != nil {
