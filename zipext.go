@@ -103,8 +103,14 @@ func Extract(archivePath string, extractPath string) error {
 	if files.Exists(destinationPath) && !fi.IsDir() {
 		return fmt.Errorf("%s exists but it is NOT a directory", destinationPath)
 	}
+	absDestBase := filepath.Clean(destinationBaseDir)
 	for _, f := range r.File {
-		destination := fmt.Sprintf("%s/%s", destinationBaseDir, f.Name)
+		destination := filepath.Clean(filepath.Join(absDestBase, filepath.FromSlash(f.Name)))
+		rel, relErr := filepath.Rel(absDestBase, destination)
+		if relErr != nil || strings.HasPrefix(rel, "..") {
+			return fmt.Errorf("illegal file path in archive: %s", f.Name)
+		}
+		destination = filepath.ToSlash(destination)
 		basepath := dirname(destination)
 		if err := os.MkdirAll(basepath, 0755); err != nil {
 			return err
@@ -265,7 +271,10 @@ func isExcluded(inputPath string, exclusions []string) bool {
 		if ex == "" {
 			continue
 		}
-		r, _ := regexp.CompilePOSIX(ex)
+		r, err := regexp.CompilePOSIX(ex)
+		if err != nil {
+			continue
+		}
 		matched = r.MatchString(inputPath)
 		if matched {
 			return true

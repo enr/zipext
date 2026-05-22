@@ -290,6 +290,49 @@ func TestCreateSingleFile(t *testing.T) {
 	}
 }
 
+func TestExtractZipSlip(t *testing.T) {
+	createDir("output", t)
+	destDir, err := ioutil.TempDir("output", "zipslip-dest-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(destDir)
+
+	zipPath := filepath.Join("output", "zipslip.zip")
+	defer os.Remove(zipPath)
+
+	zf, err := os.Create(zipPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	zw := zip.NewWriter(zf)
+	w, err := zw.Create("../../evil.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := w.Write([]byte("evil")); err != nil {
+		t.Fatal(err)
+	}
+	zw.Close()
+	zf.Close()
+
+	escapedPath := filepath.Join(filepath.Dir(filepath.Dir(destDir)), "evil.txt")
+	defer os.Remove(escapedPath) // ensure cleanup even if the old behaviour resurfaces
+	err = Extract(zipPath, destDir)
+	if err == nil {
+		t.Error("expected error for zip slip path traversal, got nil")
+	}
+	if files.Exists(escapedPath) {
+		t.Error("zip slip: file was written outside the destination directory")
+	}
+}
+
+func TestIsExcludedInvalidRegex(t *testing.T) {
+	// must not panic on invalid POSIX regex
+	result := isExcluded("target/foo.java", []string{"["})
+	_ = result
+}
+
 func deleteFile(path string, t *testing.T) {
 	if files.Exists(path) {
 		err := os.Remove(path)
