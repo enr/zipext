@@ -96,12 +96,8 @@ func Extract(archivePath string, extractPath string) error {
 	}
 	defer r.Close()
 	destinationBaseDir := filepath.ToSlash(destinationPath)
-	fi, err := os.Stat(destinationBaseDir)
-	if err != nil {
+	if err := os.MkdirAll(destinationBaseDir, 0755); err != nil {
 		return err
-	}
-	if files.Exists(destinationPath) && !fi.IsDir() {
-		return fmt.Errorf("%s exists but it is NOT a directory", destinationPath)
 	}
 	absDestBase := filepath.Clean(destinationBaseDir)
 	for _, f := range r.File {
@@ -111,15 +107,21 @@ func Extract(archivePath string, extractPath string) error {
 			return fmt.Errorf("illegal file path in archive: %s", f.Name)
 		}
 		destination = filepath.ToSlash(destination)
+		if f.FileInfo().IsDir() {
+			if err := os.MkdirAll(destination, 0755); err != nil {
+				return err
+			}
+			continue
+		}
 		basepath := dirname(destination)
 		if err := os.MkdirAll(basepath, 0755); err != nil {
 			return err
 		}
 		s, err := f.Open()
-		defer s.Close()
 		if err != nil {
 			return err
 		}
+		defer s.Close()
 		if files.Exists(destination) {
 			continue
 		}

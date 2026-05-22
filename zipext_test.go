@@ -290,6 +290,74 @@ func TestCreateSingleFile(t *testing.T) {
 	}
 }
 
+func TestExtractToNewDirectory(t *testing.T) {
+	createDir("output", t)
+
+	zipPath := filepath.Join("output", "test-new-dir.zip")
+	defer os.Remove(zipPath)
+	zf, err := os.Create(zipPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	zw := zip.NewWriter(zf)
+	w, _ := zw.Create("hello.txt")
+	if _, err := w.Write([]byte("hello")); err != nil {
+		t.Fatal(err)
+	}
+	zw.Close()
+	zf.Close()
+
+	destDir := filepath.Join("output", "extract-new-dest")
+	defer os.RemoveAll(destDir)
+
+	if err := Extract(zipPath, destDir); err != nil {
+		t.Errorf("Extract to non-existent destination failed: %v", err)
+	}
+	if !files.IsDir(destDir) {
+		t.Error("destination directory was not created")
+	}
+	if !files.Exists(filepath.Join(destDir, "hello.txt")) {
+		t.Error("expected hello.txt not found in extracted directory")
+	}
+}
+
+func TestExtractDirectoryEntries(t *testing.T) {
+	createDir("output", t)
+
+	zipPath := filepath.Join("output", "test-dir-entries.zip")
+	defer os.Remove(zipPath)
+	zf, err := os.Create(zipPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	zw := zip.NewWriter(zf)
+	// explicit directory entry
+	zw.Create("subdir/")
+	// file inside that directory
+	w, _ := zw.Create("subdir/nested.txt")
+	if _, err := w.Write([]byte("nested")); err != nil {
+		t.Fatal(err)
+	}
+	zw.Close()
+	zf.Close()
+
+	destDir, err := ioutil.TempDir("output", "dir-entries-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(destDir)
+
+	if err := Extract(zipPath, destDir); err != nil {
+		t.Errorf("Extract with directory entries failed: %v", err)
+	}
+	if !files.IsDir(filepath.Join(destDir, "subdir")) {
+		t.Error("subdir was not created as a directory")
+	}
+	if !files.Exists(filepath.Join(destDir, "subdir", "nested.txt")) {
+		t.Error("subdir/nested.txt was not extracted")
+	}
+}
+
 func TestExtractZipSlip(t *testing.T) {
 	createDir("output", t)
 	destDir, err := ioutil.TempDir("output", "zipslip-dest-")
