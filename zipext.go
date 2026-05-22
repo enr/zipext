@@ -21,6 +21,10 @@ import (
 // to handle that error (and Walk will not descend into that directory). If
 // an error is returned, processing stops.
 //
+// When err is non-nil the file argument may be nil (e.g. when the archive
+// cannot be opened). Implementations must guard against a nil file before
+// accessing any of its fields.
+//
 // TODO: this signature requires client code import archive/zip
 type WalkFunc func(file *zip.File, err error) error
 
@@ -28,7 +32,7 @@ type WalkFunc func(file *zip.File, err error) error
 func walk(fileName string, walkFn WalkFunc) error {
 	r, err := zip.OpenReader(fileName)
 	if err != nil {
-		return err
+		return walkFn(nil, err)
 	}
 	defer r.Close()
 	for _, f := range r.File {
@@ -69,7 +73,9 @@ func IsValidZip(maybeZip string) (bool, error) {
 	}
 
 	// Reset the read pointer if necessary.
-	file.Seek(0, 0)
+	if _, err := file.Seek(0, 0); err != nil {
+		return false, err
+	}
 
 	// Always returns a valid content-type and "application/octet-stream" if no others seemed to match.
 	contentType := http.DetectContentType(buffer[:n])
@@ -117,24 +123,29 @@ func Extract(archivePath string, extractPath string) error {
 		if err := os.MkdirAll(basepath, 0755); err != nil {
 			return err
 		}
-		s, err := f.Open()
-		if err != nil {
-			return err
-		}
-		defer s.Close()
 		if files.Exists(destination) {
 			continue
 		}
-		d, err := os.Create(destination)
-		defer d.Close()
-		if err != nil {
-			return err
-		}
-		if _, err := io.Copy(d, s); err != nil {
+		if err := extractFile(f, destination); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func extractFile(f *zip.File, destination string) error {
+	s, err := f.Open()
+	if err != nil {
+		return err
+	}
+	defer s.Close()
+	d, err := os.Create(destination)
+	if err != nil {
+		return err
+	}
+	defer d.Close()
+	_, err = io.Copy(d, s)
+	return err
 }
 
 func dirname(path string) string {
@@ -148,14 +159,13 @@ func dirname(path string) string {
 func addToZip(fp string, tw *zip.Writer, fi os.FileInfo, internalPath string) error {
 	ignoreBrokenSimlink := true
 	fr, err := os.Open(fp)
-	defer fr.Close()
 	if err != nil {
-		s := files.IsSymlink(fp)
-		if s && ignoreBrokenSimlink {
+		if files.IsSymlink(fp) && ignoreBrokenSimlink {
 			return nil
 		}
 		return err
 	}
+	defer fr.Close()
 	header, err := zip.FileInfoHeader(fi)
 	if err != nil {
 		return err
@@ -188,10 +198,10 @@ func walkDirectory(startPath string, tw *zip.Writer, basePath2 string, ctx conte
 		return err
 	}
 	dir, err := os.Open(dirPath)
-	defer dir.Close()
 	if err != nil {
 		return err
 	}
+	defer dir.Close()
 	fis, err := dir.Readdir(0)
 	if err != nil {
 		return err
@@ -298,10 +308,10 @@ func createZip(inputPath string, zipPath string, ctx context) error {
 		return fmt.Errorf("invalid path %s", outFilePath)
 	}
 	fw, err := os.Create(outFilePath)
-	defer fw.Close()
 	if err != nil {
 		return err
 	}
+	defer fw.Close()
 	zw := zip.NewWriter(fw)
 	defer zw.Close()
 	if files.IsDir(inPath) {

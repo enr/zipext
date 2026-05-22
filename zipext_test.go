@@ -84,6 +84,22 @@ func TestWalkErrors(t *testing.T) {
 	}
 }
 
+func TestWalkCallsFuncOnOpenError(t *testing.T) {
+	// testdata/not-a-zip.zip exists on disk so os.Lstat succeeds,
+	// but zip.OpenReader fails — walkFn must still be called.
+	called := false
+	err := Walk("testdata/not-a-zip.zip", func(f *zip.File, err error) error {
+		called = true
+		return err
+	})
+	if err == nil {
+		t.Error("expected error walking a non-zip file, got nil")
+	}
+	if !called {
+		t.Error("walkFn was not called for zip.OpenReader error; all errors must be passed through walkFn")
+	}
+}
+
 type testex struct {
 	input      string
 	exclusions []string
